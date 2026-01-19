@@ -1,0 +1,207 @@
+'use strict';
+
+(function ($, ui) {
+	/**
+	 * 더보기 버튼 숨기기
+	 * @param {any} $btn 더보기 버튼 $(element)
+	 */
+	var hideBtn = function ($btn) {
+		$btn.hide();
+	};
+
+	/**
+	 * 히스토리 유지 (sessionStorage 저장)
+	 * @param {string} response result html
+	 * @param {*} $target jquery
+	 * @param {*} $source jquery
+	 */
+	var storeHistory = function (response, $target, $source) {
+		sessionStorage.setItem(
+			location.pathname,
+			JSON.stringify({
+				response: response,
+				$target: $target.clone().wrapAll('<div/>').parent().html(),
+				$source: $source.clone().wrapAll('<div/>').parent().html(),
+			})
+		);
+	};
+
+	/**
+	 * executeEvent 더보기 실행 후 이벤트
+	 * @param {string} response 컴포넌트 렌더링 결과 text
+	 * @param {jQuery} $target append 타겟 $(element)
+	 * @param {jQuery} $source source $(element)
+	 * @param {jQuery} $btn 더보기 버튼
+	 * @param {jQuery} $lis 추가하는 리스트들만
+	 */
+	var executeEvt = function (response, $target, $source, $btn, $lis) {
+		// img lazyload
+		(function () {
+			ui.image.lazyload();
+		})();
+
+		// 더보기 후 이벤트 실행 (aftermore)
+		$target.trigger('aftermore', [
+			{
+				response: response,
+				$target: $target,
+				$source: $source,
+				$lis: $lis,
+			},
+		]);
+		// 버튼 숨기기
+		if ($source.length < 1) hideBtn($btn);
+		else if (
+			$target.find('[data-li]').length >=
+			Number($source[0].getAttribute('data-total'))
+		)
+			hideBtn($btn);
+		else $btn.show();
+
+		// sessionStorage 저장
+		storeHistory(response, $target, $source);
+	};
+
+	/**
+	 * 데이터 로드 후 타겟에 리스트 append, 추가적인 함수 실행 $target.trigger('aftermore')
+	 * @param {string} response 컴포넌트 렌더링 결과 text
+	 * @param {any} $target append 타겟 $(element)
+	 * @param {any} $source source $(element)
+	 * @param {any} $btn btn $(element)
+	 */
+	var appendCallback = function (response, $target, $source, $btn) {
+		var $result = $(response.responseText);
+
+		var $lis = $result.find('[data-li]');
+		$lis.each(function (_, li) {
+			$target.append(li);
+		});
+
+		executeEvt(response, $target, $source, $btn, $lis);
+	};
+
+	/**
+	 * CP 데이터 로드
+	 * @param {any} $btn 더보기 버튼 $(element)
+	 * @param {func} callback 데이터 로드 후 콜백
+	 */
+	var load = function ($btn, callback) {
+		var $source = $($btn[0].getAttribute('data-source-selector'));
+		var $target = $($btn[0].getAttribute('data-append-selector'));
+
+		if ($source.length == 0 || $target.length == 0) return;
+
+		var page = Number($source[0].getAttribute('data-page'));
+		var total = Number($source[0].getAttribute('data-total'));
+
+		// 더보기 요청하는 api 생성
+		var paths = $source.val().split('&');
+		var qobj = utils.qsToObject(paths[1]);
+		page += 1;
+
+		$.extend(qobj, { page: page });
+
+		// startDate, endDate
+		var paramkey = $source[0].getAttribute('data-paramkey') || '';
+
+		paramkey.split(',').forEach(function (key) {
+			$.extend(qobj, {
+				[key]: $source[0].getAttribute('data-' + key),
+			});
+		});
+
+		var paramkeyString = Object.keys(qobj)
+			.map(function (key) {
+				return key + '=' + qobj[key];
+			})
+			.join('&');
+
+		if (page === 1 || $target.find('[data-li]').length < total) {
+			utils.req.get({
+				url: paramkey
+					? paths[0] + '&' + paths[2] + '&' + paramkeyString
+					: paths[0] + '&' + paths[1] + page + '&' + paths[2],
+				complete: function (response) {
+					if (page === 1) $target.html('');
+					$source[0].setAttribute('data-page', page);
+					// $source[0].setAttribute('data-total', $(response).find($btn[0].getAttribute('data-source-selector')).data('total'));
+
+					appendCallback(response, $target, $source, $btn);
+					if (callback) callback(true, 'SUCCESS');
+				},
+				fail: function () {
+					console.log('Check network connection.');
+					if (callback) callback(false, 'FAIL');
+				},
+			});
+		} else {
+			hideBtn($btn);
+			if (callback) callback(false, 'NONE');
+		}
+	};
+
+	$(document).ready(function () {
+		var moreSelector = '[data-btn-more]';
+		var $moreBtn = $(moreSelector);
+
+		$moreBtn.each(function () {
+			var _this = $(this)[0];
+			var $source = $(_this.getAttribute('data-source-selector'));
+			var $target = $(_this.getAttribute('data-append-selector'));
+
+			try {
+				/**
+				 * 뒤로가기로 들어온 페이지인지 확인
+				 * @returns true || false
+				 */
+				if (utils.isBackForwardPage()) {
+					// 뒤로가기 시 더보기 유지 (sessionStorage에 이전 데이터 체크)
+					var prevDom = sessionStorage.getItem(location.pathname);
+					if (prevDom) {
+						prevDom = JSON.parse(prevDom);
+						// 커스텀 이벤트 걸려있을 수 있어서 자식만 교체
+						$target.html($(prevDom.$target).html());
+						$source.replaceWith(prevDom.$source);
+						executeEvt(
+							prevDom.response,
+							$target,
+							$(_this.getAttribute('data-source-selector')),
+							$(_this)
+						);
+					}
+				} else {
+					sessionStorage.removeItem(location.pathname);
+				}
+
+				// 버튼 숨기기
+				if ($source.length < 1) hideBtn($(_this));
+				else if (
+					$target.find('[data-li]').length >= Number($source.data('total'))
+				)
+					hideBtn($(_this));
+			} catch (e) {}
+		});
+
+		$(document).on(
+			'click',
+			moreSelector +
+				', ' +
+				moreSelector +
+				' button, ' +
+				moreSelector +
+				' i, ' +
+				moreSelector +
+				' a, ' +
+				moreSelector +
+				' span',
+			function (event) {
+				event.preventDefault();
+				event.stopPropagation();
+				$moreBtn = $(this).closest(moreSelector);
+				load($moreBtn);
+			}
+		);
+	});
+
+	/* //news-more (뉴스 더보기 펼치기)*/
+})(window.jQuery, window.ui);

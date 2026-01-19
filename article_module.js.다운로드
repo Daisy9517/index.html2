@@ -1,0 +1,151 @@
+(function (ui) {
+	if (!ui) {
+		console.log('%c⛔ UI가 없습니다.', 'color: #ec5237');
+		ui = {
+			image: {
+				lazyload: function () {},
+			},
+		};
+	}
+
+	/** ArticleModule 생성 */
+	function ArticleModule() {}
+
+	window.module = new ArticleModule();
+
+	/** 소재 변환 모듈 */
+	var conversion = new (function () {
+		var _funcs = this;
+
+		this._p = false;
+		this.selector = {
+			service: {
+				imgSlideGroup: '[data-group-slide]', // GROUP 슬라이드
+				imgEnlarge: '[data-z]',
+			},
+		};
+
+		/**
+		 * 소재 전체 변환
+		 */
+		this.convert = function () {
+			Object.keys(_funcs.selector.service).forEach(function (svc) {
+				if (typeof _funcs[svc] === 'function') {
+					_funcs[svc].call(this, {
+						selector: _funcs.selector.service[svc],
+					});
+				}
+			});
+			ui.image.lazyload();
+		};
+
+		/**
+		 * TODO
+		 * [data-group-slide] GROUP 슬라이드 변환
+		 */
+		this.imgSlideGroup = function () {
+			var selector = _funcs.selector.service.imgSlideGroup;
+			var $group = $(selector);
+			$group.map(function () {
+				var $this = $(this);
+				var title = $group.find('.title').text() || '';
+				var caption = $this.find('.caption').text() || '';
+				var $swiperHTML = $(
+					'<div class="group-slide"><div class="swiper mySwiper"><div class="swiper-wrapper"></div></div></div>'
+				);
+
+				if (title && title !== '') {
+					$swiperHTML
+						.find('.swiper')
+						.append('<p class="title">' + title + '</p>');
+				}
+				if (caption && caption !== '') {
+					$swiperHTML
+						.find('.swiper')
+						.append('<p class="caption">' + caption + '</p>');
+				}
+				$swiperHTML
+					.find('.swiper')
+					.append(
+						'<div class="swiper-button-next article"></div><div class="swiper-button-prev article"></div><div class="swiper-pagination"></div>'
+					);
+
+				$this.find('img').map(function () {
+					$(this).attr('loading', 'lazy');
+					var imgSrc = $(this).attr('src');
+					var imgTitle = $(this)[0].getAttribute('alt');
+					var imgHTML =
+						'<div class="swiper-slide"><figure class="slide-img"><img src="' +
+						imgSrc +
+						'" alt="' +
+						imgTitle +
+						'"/></figure></div>';
+					$swiperHTML.find('.swiper-wrapper').append(imgHTML);
+				});
+
+				$this.replaceWith($swiperHTML);
+
+				//스와이퍼 기능
+				new Swiper($swiperHTML.find('.mySwiper')[0], {
+					cssMode: true,
+					navigation: {
+						nextEl: '.swiper-button-next.article',
+						prevEl: '.swiper-button-prev.article',
+					},
+					pagination: {
+						el: $swiperHTML.find('.swiper-pagination')[0],
+						clickable: true,
+					},
+					mousewheel: false,
+					keyboard: true,
+				});
+			});
+		};
+
+		/**
+		 * 이미지 확대 보기 추가 (data-z가 있는 소재의 경우)
+		 */
+		this.imgEnlarge = function () {
+			var selector = _funcs.selector.service.imgEnlarge;
+			var $img = $(selector);
+
+			$img.map(function (index, ele) {
+				var $this = $(this);
+				$this.after(
+					'<button id="imgEnlargeBtn' +
+						index +
+						'" class="btn-zoom"><i class="ico-zoom"></i></button>'
+				);
+				$('section.contents').after(
+					'<div id="imgEnlargePopup' +
+						index +
+						'" class="popup-zoom" style="display: none;"><button id="imgEnlargeBtnClose' +
+						index +
+						'" class="btn-close btn-zoom-close"><i class="ico-close"></i></button><div class="zoom-area"><figure><img src="' +
+						$(ele).data('z') +
+						'" alt=""></figure></div></div>'
+				);
+
+				// 확대보기 팝업 show&hide
+				$('#imgEnlargeBtn' + index).click(function () {
+					$('#imgEnlargePopup' + index).show();
+					$('body,html').css('overflow-y', 'hidden');
+				});
+				$('#imgEnlargeBtnClose' + index).click(function () {
+					$('#imgEnlargePopup' + index).hide();
+					$('body,html').css('overflow-y', 'auto');
+				});
+			});
+		};
+	})();
+
+	$.extend(ArticleModule.prototype, {
+		conversion: conversion,
+		artId: location.pathname.match(/[^read/]+/g)[2],
+		getArtId: function () {
+			return location.pathname.match(/[^read/]+/g)[2];
+		},
+	});
+
+	window.ArticleModule = ArticleModule;
+})(window.ui);

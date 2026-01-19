@@ -1,0 +1,267 @@
+
+function getXmlHttpRequest()
+{
+	if(window.XMLHttpRequest)
+	{
+		return new XMLHttpRequest();
+	}
+	else if(window.ActiveXObject)
+	{
+		try {
+			return new ActiveXObject("Msxml2XMLHTTP");	// ie 상위 버전
+		} catch(e) {
+			return new ActiveXObject("Microsoft.XMLHTTP"); //  ie 하위버전
+		}
+	}
+}
+
+
+function AjaxTxt(url, data, obj_name)
+{
+	var return_txt;
+	var xmlhttp = getXmlHttpRequest();
+	var obj = document.getElementById(obj_name);
+
+	xmlhttp.open("POST", url, true);
+	xmlhttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=utf-8');
+
+	xmlhttp.onreadystatechange = function()
+	{
+		if(xmlhttp.readyState == 4)
+		{
+			if(xmlhttp.status == 200)
+			{
+				if(obj)
+					obj.innerHTML = xmlhttp.responseText;
+				else if(obj_name)
+				{
+					if(eval("typeof("+obj_name+")") == "function")
+						eval(obj_name+"(xmlhttp);");
+				}
+
+				// div에 responseText를 추가하고 추가 작업이 필요한데 xml로는 받기 싫고....
+				// 해서 콜백 외에 추가 함수를 한개 더 정하고 콜하도록 수정함.
+				if(typeof(ajax_addfunc) == 'function')
+					ajax_addfunc(xmlhttp);
+			}
+			else if(xmlhttp.status == 404)
+			{
+				alert("[Ajax]\n\nFile not found : "+url);
+			}
+		}
+	}
+	xmlhttp.send(data);
+}
+
+
+function get_ajax_node_value(xmlhttp, node_name)
+{
+	var value = "";
+	var obj;
+
+	// xmlhttp를 보내거나
+	if(xmlhttp.responseXML)
+		obj = xmlhttp.responseXML.getElementsByTagName(node_name);
+	else // xmlhttp.responseXML.getElementsByTagName('tag').item(0) 를 보내거나
+		obj = xmlhttp.getElementsByTagName(node_name);
+
+	try {
+		if(typeof(obj.length) == 'number')
+		{
+			if(obj.length < 1)
+				return value;
+
+			if(obj.length == 1)
+				return obj.item(0).firstChild.nodeValue;
+
+			value = new Array();
+			for(i=0; i<obj.length; i++)
+			{
+				value[i] = obj.item(i).firstChild.nodeValue;
+			}
+
+			return value;
+		}
+	}
+	catch(e) { }
+
+	return "";
+}
+
+// value.length가 배열인지 string인지 한번 다시 체크해서 사용해야 하는 불편함 때문에
+// value.length, value.value 방식으로 변경함.
+// value.length = 0 >> NULL or not found node
+// value.length = 1 >> 1 record , value.value is value
+// value.length > 1 >> N records, value[idx].value is value
+function get_ajax_node_values(xmlhttp, node_name)
+{
+	var value = new Array();
+	var obj;
+
+	value.length = 0;
+
+	// xmlhttp를 보내거나
+	if(xmlhttp.responseXML)
+		obj = xmlhttp.responseXML.getElementsByTagName(node_name);
+	else // xmlhttp.responseXML.getElementsByTagName('tag').item(0) 를 보내거나
+		obj = xmlhttp.getElementsByTagName(node_name);
+
+	try
+	{
+		if(typeof(obj.length) == 'number')
+		{
+			if(obj.length < 1)
+				return value;
+
+			if(obj.length == 1)
+			{
+				var value = new Array();
+				value.length = 1;
+				value.value = obj.item(0).firstChild.nodeValue;
+
+				return value;
+			}
+
+			value = new Array();
+			value.length = obj.length;
+			for(i=0; i<obj.length; i++)
+			{
+				value[i] = new Array();
+				value[i].value = obj.item(i).firstChild.nodeValue;
+			}
+
+			return value;
+		}
+	}
+	catch(e) { }
+
+	return value;
+}
+function ajax_callback(xmlhttp)
+{
+	var error, message, script;
+	var element;
+	if(!xmlhttp.responseXML)
+		element = null;
+	else
+		element = xmlhttp.responseXML.documentElement || null;
+
+	if(element == null)
+	{
+		alert("XML Parsing Error\nPlease, check the return XML\nXML document = {\n"+xmlhttp.responseText+"\n}");
+		return;
+	}
+
+	if(xmlhttp.responseXML)
+	{
+		error = get_ajax_node_values(xmlhttp, 'error');
+		message = get_ajax_node_values(xmlhttp, 'message');
+		script = get_ajax_node_values(xmlhttp, 'script');
+	}
+
+	if(message.value && error.value == "1")
+		alert(message.value);
+
+	if(error.value == "0" && script.value)
+	{
+		eval(script.value);
+	}
+}
+
+
+var xhr = null;
+var div_id_value_ = null;
+function getXMLHttpRequestx() {
+	if (window.ActiveXObject) {
+		try {
+			return new ActiveXObject("Msxml2.XMLHTTP");//IE 상위 버젼
+		} catch (e1) {
+			try {
+				return new ActiveXObject("Microsoft.XMLHTTP");//IE 하위 버젼
+			} catch (e2) {
+				return null;
+			}
+		}
+	} else if (window.XMLHttpRequest) {
+		return new XMLHttpRequest();//IE 이외의 브라우저(FireFox 등)
+	} else {
+		return null;
+	}
+}// XMLHttpRequest 객체 얻기
+
+
+function AjaxTxtOutResponse() {
+	if (xhr.readyState == 4) {//완료
+		if (xhr.status == 200) {//오류없이 OK
+			var str = xhr.responseText;//서버에서 보낸 내용 받기
+
+			document.getElementById(div_id_value_).innerHTML = str;//보여주기
+
+		} else {
+			if(xhr.status == 404)
+			{
+				alert("[Ajax]\n\nFile not found ");
+			}else{
+				alert("[Ajax]\n\nFail : " + xhr.status);
+			}
+		}
+	}
+}// 응답
+function AjaxTxtOutResponseNotError() {
+	if (xhr.readyState == 4) {//완료
+		if (xhr.status == 200) {//오류없이 OK
+			var str = xhr.responseText;//서버에서 보낸 내용 받기
+			document.getElementById(div_id_value_).innerHTML = str;//보여주기
+		}
+	}
+}// 응답
+
+
+function AjaxAsyncTrue(url,data,idx)
+{
+	div_id_value_ = idx;
+	xhr = getXMLHttpRequestx();//XMLHttpRequest 객체 얻기
+	xhr.onreadystatechange = AjaxTxtOutResponseNotError;//콜백 함수  등록
+	xhr.open("POST", url, true);//연결
+	xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=utf-8');
+	xhr.send(data);//전송
+}// 서버에 요청
+
+// 무조건 동기식
+function AjaxAsyncFalse(url,data,idx)
+{
+	div_id_value_ = idx;
+	xhr = getXMLHttpRequestx();//XMLHttpRequest 객체 얻기
+	xhr.onreadystatechange = AjaxTxtOutResponseNotError;//콜백 함수  등록
+	xhr.open("POST", url, false);//연결
+	xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=utf-8');
+	xhr.send(data);//전송
+}// 서버에 요청
+
+function AjaxAsyncFalseHtml(url,data,idx)
+{
+	$.ajax({
+		type: "POST",
+		url:url,data: data,	async: false, cache: false,
+		success: function(data){ $("#"+idx).html(data);},
+		error:	function(xhr, status, error) { alert(status); }
+	});
+}
+function AjaxAsyncTrueHtml(url,data,idx)
+{
+	$.ajax({
+		type: "POST",
+		url:url,data: data,	async: true, cache: false,
+		success: function(data){ $("#"+idx).html(data);},
+		error:	function(xhr, status, error) { alert(status); }
+	});
+}
+
+function AjaxReturn(url,data){
+	$.ajax({
+		type: "POST",
+		url:url,data: data,	async: true, cache: false,
+		success: function(data){ return data;},
+		error:	function(xhr, status, error) { alert(status); }
+	});
+}

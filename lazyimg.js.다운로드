@@ -1,0 +1,61 @@
+/**
+ * lazyload image 처리
+ * src = 'LAZY_IMG'
+ * data-src = '이미지1'
+ * data-thum = '이미지1 load 실패 시 대체이미지'
+ */
+
+var constant = utils.constant;
+window.ui = window.ui || {};
+window.ui.image = window.ui.image || {};
+
+window.ui.image.lazyload = function() {
+	var selector = 'img[loading="lazy"][data-src]';
+	document.querySelectorAll(selector).forEach(function (target) {
+		var io = new IntersectionObserver(
+			function (entries, observer) {
+				entries.forEach(function (entry) {
+					if (entry.isIntersecting) {
+						var img = entry.target;
+						var dataSrc = img.getAttribute('data-src');
+						var dataThum = img.getAttribute('data-thum');
+
+						//dataSrc(이미지1)가 정상적으로 로딩되면 fade 효과
+						img.addEventListener('load', function () {
+							img.classList.add('fade');
+							observer.unobserve(this);
+							observer.disconnect();
+						});
+						//img dataSrc(이미지1) 로딩 실패시
+						img.addEventListener('error', function imgOnError() {
+							//dataThum 이미지 로딩 실패시 무한루프 방지 조건 추가
+							if(!this.getAttribute('data-thum-loaded') && dataThum){
+								//dataThum(대체이미지)가 경로가 올바르고, 이미지가 로딩되지 않았다면
+								if (!dataThum.endsWith(constant.imgUrl)) {
+									//dataSrc(이미지1)를 dataThum(대체이미지)로 치환
+									setTimeout(function () {
+										img.src = dataThum;
+									}, 0);
+									//data-thum-loaded (대체이미지) 로딩 체크
+									img.setAttribute('data-thum-loaded', true);
+
+								}
+							}
+							observer.disconnect();
+						});
+						//src(회색배경)를 dataSrc(이미지1)로 치환
+						setTimeout(function () {
+							img.src = dataSrc;
+						}, 0);
+
+						//data-loaded (이미지1) 로딩 체크
+						img.setAttribute('data-loaded', true);
+
+					}
+				});
+			},
+			{ threshold: 0 }
+		);
+		io.observe(target);
+	});
+};

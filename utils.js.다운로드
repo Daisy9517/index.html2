@@ -1,0 +1,1697 @@
+(function ($) {
+	if (!$) {
+		console.log('jQuery is not defined!');
+		return;
+	}
+
+	/** .hide 유무에 따른 visible 체크 */
+	$.fn.isVisibleEl = function () {
+		return this.length > 0 ? (!$(this).hasClass('hide') ? true : false) : false;
+	};
+
+	/** .hide 제거 */
+	$.fn.showEl = function () {
+		this.each(function () {
+			$(this).removeClass('hide');
+		});
+	};
+
+	/** .hide 추가 */
+	$.fn.hideEl = function () {
+		this.each(function () {
+			$(this).addClass('hide');
+		});
+	};
+
+	/** .hide 토글 */
+	$.fn.toggleEl = function () {
+		this.each(function () {
+			$(this).isVisibleEl() ? $(this).hideEl() : $(this).showEl();
+		});
+	};
+})(window.jQuery);
+
+(function () {
+	var utils = {};
+
+	var prefix = location.host.match(/([^-]*-)(.*)/)
+		? location.host.replace(/([^-]*-)(.*)/, '$1')
+		: '';
+	utils.prefix = prefix;
+
+
+
+	/**
+	 * escapeHtml
+	 */
+	utils.escapeHtml = function escapeHtml(e) {
+		return (e || '')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&apos;')
+			.replace(/\</g, '&lt;')
+			.replace(/\>/g, '&gt;');
+	};
+
+	utils.t2p = function t2p(e) {
+		return e
+			? e.replace(/(\.tn_\d{0,3}\.jpg)$/, '').replace('.thumb.jpg', '')
+			: e;
+	};
+
+
+
+	utils.getSrcset = function getSrcset(e, t) {
+		return t.width && t.height && e
+			? (e = e.indexOf('http') < 0 ? utils.constant.imgUrl + e : e).indexOf(
+				'cf-images'
+			) > -1
+				? [e]
+				: [e]
+			// 	e + '/_ir_' + String(t.width) + 'x' + String(t.height) + '_/',
+			// 	e +
+			// 		'/_ir_' +
+			// 		String(2 * t.width) +
+			// 		'x' +
+			// 		String(2 * t.height) +
+			// 		'_/',
+			// ]
+			: [];
+	};
+
+	/**
+	 * device 정보 리턴
+	 * - platform (mobile, tablet, pc => navigator 기준)
+	 */
+	utils.device = new (function () {
+		var agent = navigator.userAgent.toLowerCase();
+
+		this.mobile =
+			/android|mobile|ip(hone|od|ad)|blackberry|iemobile|samsungbrowser|kindle|netfront|silk-accelerated|(hpw|web)os|fennec|minimo|opera m(obi|ini)|blazer|dolfin|dolphin|skyfire|zune/.test(
+				agent
+			);
+		this.tablet = this.mobile && !/mobile/.test(agent);
+		this.pc = !this.mobile && !this.tablet;
+		this.ios = /ipad|iphone|ipod/.test(agent);
+		this.and = /android/.test(agent);
+		this.app = /heraldapp/.test(agent); // 앱 조건 변경해야함!!
+		this.msie =
+			(navigator.appName == 'Netscape' && agent.indexOf('trident') != -1) ||
+			agent.indexOf('msie') != -1;
+		this.msieVersion = (function () {
+			var re = /MSIE ([0-9]{1,}[\.0-9]{0,})/.exec(navigator.userAgent);
+			return re ? parseFloat(RegExp.$1) : -1;
+		})();
+
+		// api에서 사용하는 공유디바이스 조건 (P: PC, M: MobileWeb, T: TabletWeb, A: MobileAPP, B: TabletAPP)
+		this.platform = this.pc
+			? 'P'
+			: this.tablet && this.app
+				? 'B'
+				: this.tablet
+					? 'T'
+					: this.app
+						? 'A'
+						: 'M';
+	})();
+
+	// constant
+	var constant = (function () {
+		// default
+		var pcUrl = 'https://' + prefix + 'biz.heraldcorp.com';
+		var mUrl = 'https://' + prefix + 'mbiz.heraldcorp.com';
+		var hDomain = '.heraldcorp.com';
+
+		// domain
+		var originDomain = location.origin;
+		if(originDomain.indexOf('koreaherald.com') != -1){
+			pcUrl = 'https://' + prefix + 'www.koreaherald.com';
+			mUrl = 'https://' + prefix + 'm.koreaherald.com';
+			hDomain = '.koreaherald.com';
+		}else if(originDomain.indexOf('heraldmuse.com') != -1){
+			pcUrl = 'https://' + prefix + 'www.heraldmuse.com';
+			mUrl = 'https://' + prefix + 'm.heraldmuse.com';
+			hDomain = '.heraldmuse.com';
+		}else if(originDomain.indexOf('realfoodspremium.co.kr') != -1){
+			pcUrl = 'https://' + prefix + 'www.realfoodspremium.co.kr';
+			mUrl = 'https://' + prefix + 'm.realfoodspremium.co.kr';
+			hDomain = '.realfoodspremium.co.kr';
+		}else if(originDomain.indexOf('realfoods.co.kr') != -1){
+			pcUrl = 'https://' + prefix + 'www.realfoods.co.kr';
+			mUrl = 'https://' + prefix + 'm.realfoods.co.kr';
+			hDomain = '.realfoods.co.kr';
+		}
+
+		var svcUrl = location.origin === mUrl ? mUrl : pcUrl;
+		// var svcUrl = utils.device.mobile ? mUrl : pcUrl;
+
+		return {
+			isPC: svcUrl == pcUrl,
+			isM: svcUrl == mUrl,
+			svcUrl: svcUrl,
+			pcUrl: pcUrl,
+			mUrl: mUrl,
+			dpsUrl:
+				'https://' +
+				(prefix === 'pre-' ? '' : prefix) +
+				'dps.heraldcorp.com/msp_api',
+			artUrl: svcUrl + '/news/read/',
+			staticUrl:
+				'https://' +
+				(prefix === 'pre-' ? '' : prefix) +
+				'static.heraldcorp.com',
+			imgUrl:
+				'https://' + (prefix === 'pre-' ? '' : prefix) + 'wimg.heraldcorp.com',
+			masUrl:
+				'https://' + (prefix === 'pre-' ? '' : prefix) + 'mas.heraldcorp.com',
+			domain: hDomain,
+			storage: 'svc-ni',
+		};
+	})();
+	utils.constant = constant;
+
+	/**
+	 * utils.message.alert({옵션}, ok 함수);
+	 * utils.message.confirm({옵션}, ok 함수, cancel 함수);
+	 * utils.message.toast({옵션});
+	 * utils.message.dim({open: boolean, close: boolean})
+	 *
+	 * 메세지 옵션
+	 * layout: 레이아웃 html (내부에서만 사용)
+	 * dom: 레이아웃 (내부에서만 사용)
+	 * timeout: toast 노출 시간 (내부에서만 사용)
+	 *
+	 * okBtn: ok버튼 유무(alert: o / confirm: o / toast: X)
+	 * cancelBtn: cancel 버튼 유무(alert: X / confirm: o / toast: X)
+	 * okText: ok버튼 텍스트(alert: o / confirm: o / toast: X)
+	 * cancelText: cancel버튼 텍스트(alert: x / confirm: o / toast: X)
+	 * title : 제목 (alert : o / confirm: o /toast : x)
+	 * message: 노출 메시지
+	 * msgType: messageUtil에 정의되어있는 message를 노출할 경우 입력
+	 */
+	utils.message = new (function () {
+		var self = this;
+
+		var popup = {
+			modal: [
+				'<div class="message_layer">',
+				'<div class="member-popup">',
+				'<div class="popup-terms">',
+				'<div class="popup-header">',
+				'<h2 class="title">[title]</h2>',
+				'<button class="btn-close"><i class="ico-popup-close"><span class="visually-hidden">팝업창 닫기</span></i></button>',
+				'</div>',
+				'<div class="popup-body">',
+				'<p>[message]</p>',
+				'<div class="membership-btn">',
+				'<button class="btn-type01 btn-ok">[okText]</button>',
+				'<button class="btn-type01 btn-cancel">[cancelText]</button>',
+				'</div>',
+				'</div>',
+				'</div>',
+				'</div>',
+				'</div>',
+			].join(''),
+			toast: '<p class="layer_toast">[message]</p>',
+			dim: '<div class="message_layer"><div class="dim_text"><span class="loader"></span><span style="margin-left:26px;">[message]</span></div></div>',
+		};
+
+		var alertOptions = {
+			layout: popup.modal,
+			okBtn: true,
+			title: '알림',
+			okText: '확인',
+			message: '',
+		};
+
+		var confirmOptions = {
+			layout: popup.modal,
+			okBtn: true,
+			cancelBtn: true,
+			title: '확인',
+			okText: '네',
+			cancelText: '아니오',
+			message: '',
+		};
+
+		var toastOptions = {
+			layout: popup.toast,
+			message: '',
+			timeout: 2000,
+		};
+
+		var dimOptions = {
+			layout: popup.dim,
+			message: '처리 중입니다',
+			timeout: 2000,
+		};
+
+		var message = {
+			bookmark: '스크랩하였습니다. 내 보관함에서 확인하세요.',
+			copyLink: '링크가 복사되었습니다.',
+			livelogin:
+				'로그인이 필요한 서비스입니다. 로그인페이지로 이동하시겠습니까?',
+			subsLogin:
+				'로그인이 필요한 서비스입니다. 로그인페이지로 이동하시겠습니까?',
+			bookmarkLogin:
+				'로그인이 필요한 서비스입니다. 로그인페이지로 이동하시겠습니까?',
+		};
+
+		this.set = function (options) {
+			options = options || {};
+
+			var msg = options.message;
+
+			if (typeof options.msgType !== 'undefined') {
+				msg = message[options.msgType];
+			}
+
+			var parsedLayout = options.layout;
+
+			parsedLayout = parsedLayout.replace('[message]', msg || '');
+			parsedLayout = parsedLayout.replace('[title]', options.title || '');
+
+			var $dom = $(parsedLayout);
+
+			// if ($('div.message_layer').length > 0) {
+			// 	return;
+			// }
+
+			$('body > div#wrapper').append($dom);
+
+			if (options.okBtn) {
+				$dom.find('.btn-ok').text(options.okText);
+			} else {
+				$dom.find('.btn-ok').remove();
+			}
+
+			if (options.cancelBtn) {
+				$dom.find('.btn-cancel').text(options.cancelText);
+			} else {
+				$dom.find('.btn-cancel').remove();
+			}
+
+			return $dom;
+		};
+
+		this.openLayerPopup = function (options, ok, cancel) {
+			var $dom = $(options.dom);
+
+			$('html, body').addClass('overflow-hidden');
+
+			$dom
+				.find('.btn-ok')
+				.off()
+				.on('click', function (e) {
+					e.stopPropagation();
+					e.preventDefault();
+					if (ok) {
+						ok(e);
+					}
+					self.closeLayerPopup($dom);
+				});
+
+			$dom
+				.find('.btn-cancel')
+				.off()
+				.on('click', function (e) {
+					e.stopPropagation();
+					e.preventDefault();
+					if (cancel) {
+						cancel(e);
+					}
+					self.closeLayerPopup($dom);
+				});
+
+			$dom
+				.find('.btn-close')
+				.off()
+				.on('click', function (e) {
+					e.stopPropagation();
+					e.preventDefault();
+					if (cancel) {
+						cancel(e);
+					}
+					self.closeLayerPopup($dom);
+				});
+		};
+
+		this.closeLayerPopup = function ($dom, useAnimate) {
+			if (!useAnimate) {
+				$dom.remove();
+				$('html, body').removeClass('overflow-hidden');
+			} else {
+				$dom.fadeOut();
+				$('html, body').removeClass('overflow-hidden');
+			}
+		};
+
+		this.openToast = function (options) {
+			var $dom = $(options.dom);
+			$dom.fadeIn();
+			setTimeout(function () {
+				$dom.fadeOut();
+			}, options.timeout);
+		};
+
+		this.toast = function (customOptions, ok) {
+			var options = $.extend({}, toastOptions, customOptions);
+			var $dom = this.set(options);
+			$.extend(options, { dom: $dom });
+			self.openToast(options);
+		};
+
+		this.alert = function (customOptions, ok) {
+			var options = $.extend({}, alertOptions, customOptions);
+			var $dom = this.set(options);
+			$.extend(options, { dom: $dom });
+			this.openLayerPopup(options, ok);
+		};
+
+		this.confirm = function (customOptions, ok, cancel) {
+			var options = $.extend({}, confirmOptions, customOptions);
+			var $dom = this.set(options);
+			$.extend(options, { dom: $dom });
+			this.openLayerPopup(options, ok, cancel);
+		};
+
+		this.dim = function (customOptions) {
+			var options = $.extend({}, dimOptions, customOptions);
+
+			if (options.open) {
+				if (window._dim) this.closeLayerPopup(window._dim);
+				var $dom = this.set(options);
+				$.extend(options, { dom: $dom });
+				window._dim = $dom;
+				this.openLayerPopup(options);
+			} else if (options.close && window._dim) {
+				this.closeLayerPopup(window._dim, true);
+				delete window._dim;
+			}
+		};
+	})();
+
+	/**
+	 * 브라우저 쿠키 기능
+	 */
+	utils.cookie = new (function () {
+		var _c = this;
+
+		/**
+		 * 쿠키 키 리스트 리턴
+		 * @returns key배열
+		 */
+		this.keys = function () {
+			var arr = document.cookie
+				.replace(/((?:^|\s*;)[^\=]+)(?=;|$)|^\s*|\s*(?:\=[^;]*)?(?:\1|$)/g, '')
+				.split(/\s*(?:\=[^;]*)?;\s*/);
+			return arr.reduce(function (all, cu) {
+				all.push(decodeURIComponent(cu));
+				return all;
+			}, []);
+		};
+
+		/**
+		 * 쿠키값 조회
+		 * @param {string} key 쿠키Key
+		 * @returns 쿠키값
+		 */
+		this.get = function (key) {
+			if (!key) return null;
+
+			var cookie =
+				document.cookie.replace(
+					new RegExp(
+						'(?:(?:^|.*;)\\s*' +
+						encodeURIComponent(key).replace(/[\-\.\+\*]/g, '\\$&') +
+						'\\s*\\=\\s*([^;]*).*$)|^.*$'
+					),
+					'$1'
+				) || null;
+			if (cookie) {
+				try {
+					cookie = decodeURIComponent(cookie);
+				} catch (e) {
+					cookie = decodeURIComponent(unescape(cookie)); // escape 처리된 문자열이 저장된 경우, catch.
+				}
+			}
+			return cookie;
+		};
+
+		/**
+		 * 쿠키 설정
+		 * @param {string} key key
+		 * @param {string} value value
+		 * @param {any} end end
+		 * @param {string} path path
+		 * @param {string} domain domain
+		 * @param {string} secure secure
+		 * @returns true || false
+		 */
+		this.set = function (key, value, end, path, domain, secure) {
+			if (!key || /^(?:expires|max\-age|path|domain|secure)$/i.test(key)) {
+				return false;
+			}
+
+			// 기본 domain 설정
+			domain = domain || constant.domain;
+
+			var expires = '';
+			if (end) {
+				switch (end.constructor) {
+					case Number:
+						expires =
+							end === Infinity
+								? '; expires=Fri, 31 Dec 9999 23:59:59 GMT'
+								: '; max-age=' + end * 60 * 60 * 24;
+						break;
+					case String:
+						expires = '; expires=' + end;
+						break;
+					case Date:
+						expires = '; expires=' + end.toUTCString();
+						break;
+				}
+			}
+
+			document.cookie =
+				encodeURIComponent(key) +
+				'=' +
+				encodeURIComponent(value) +
+				expires +
+				(domain ? '; domain=' + domain : '') +
+				'; path=' +
+				(path ? path : '/') +
+				(secure ? '; secure' : '');
+			return true;
+		};
+
+		/**
+		 * 쿠키 key가 존재하는지 확인
+		 * @param {string} key key
+		 * @returns true || false
+		 */
+		this.has = function (key) {
+			if (!key) return false;
+			return new RegExp(
+				'(?:^|;\\s*)' +
+				encodeURIComponent(key).replace(/[\-\.\+\*]/g, '\\$&') +
+				'\\s*\\='
+			).test(document.cookie);
+		};
+
+		/**
+		 * 쿠키 삭제
+		 * @param {string} key key
+		 * @param {string} path path
+		 * @param {string} domain domain
+		 * @returns true || false
+		 */
+		this.remove = function (key, path, domain) {
+			if (!key) return false;
+
+			domain = domain || constant.domain;
+			path = path || '/';
+			document.cookie =
+				encodeURIComponent(key) +
+				'=; expires=Thu, 01 Jan 1970 00:00:00 GMT' +
+				'; path=' + path +
+				(domain ? '; domain=' + domain : '');
+			return true;
+		};
+
+		/**
+		 * 쿠키 GA값 리턴
+		 * @returns GA코드
+		 */
+		this.getGA = function () {
+			try {
+				return _c.get('_ga').replace(/GA\d\.\d\.(.*)/, '$1');
+			} catch (e) {
+				return null;
+			}
+		};
+	})();
+
+	/**
+	 * pcid 기능
+	 */
+	utils.pcid = new (function () {
+		var cookieName = '_ss_pcid';
+
+		/**
+		 * pcid get
+		 * @returns pcid str
+		 */
+		this.get = function () {
+			try {
+				var val = utils.cookie.get(cookieName);
+				return val;
+			} catch (e) {}
+			return '-1';
+		};
+
+		/**
+		 * pcid set
+		 */
+		this.set = function () {
+			var today = new Date();
+			var expiredDate = today.getDate() + 30;
+			var val = utils.cookie.get(cookieName);
+
+			if (!val) {
+				val = (function (prefix) {
+					var rtn = '';
+					for (var i = 0; i < 10; i++) {
+						rtn += String(Math.random()).charAt(2);
+					}
+					return prefix + rtn;
+				})(today.getTime());
+			}
+
+			utils.cookie.set(cookieName, val, expiredDate);
+		};
+
+		/**
+		 * pcid 마지막 자리수
+		 * @returns pcid str
+		 */
+		this.getLast = function () {
+			return this.get().slice(-1);
+		};
+	})();
+
+	/**
+	 * object -> formData 로 변환
+	 * @param {any} val value
+	 * @param {any} formData 폼 데이터
+	 * @param {string} namespace 키명
+	 * @returns formData
+	 */
+	utils.objToFormData = function (val, formData, namespace) {
+		namespace = namespace || '';
+		formData = formData || new FormData();
+
+		if (typeof val !== 'undefined' && val !== null) {
+			if (val instanceof Date) {
+				formData.append(namespace, val.toISOString());
+			} else if (val instanceof Array) {
+				for (let i = 0; i < val.length; i++) {
+					utils.objToFormData(val[i], formData, namespace + '[' + i + ']');
+				}
+			} else if (typeof val === 'object' && !(val instanceof File)) {
+				for (let propertyName in val) {
+					if (val.hasOwnProperty(propertyName)) {
+						utils.objToFormData(
+							val[propertyName],
+							formData,
+							namespace ? namespace + '.' + propertyName : propertyName
+						);
+					}
+				}
+			} else if (val instanceof File) {
+				formData.append(namespace, val);
+			} else {
+				formData.append(namespace, val);
+			}
+		}
+		return formData;
+	};
+
+	/**
+	 * XMLHttpRequest 기능 취합
+	 */
+	utils.req = new (function () {
+		this.parseUrl = function (url) {
+			if (url) {
+				if (url.startsWith('http') || url.startsWith('//')) {
+					return url;
+				}
+				return constant.dpsUrl + url;
+			}
+
+			return undefined;
+		};
+
+		this.getSrc = function (e, t, i) {
+			return t && i && e
+				? e.indexOf('cf-images') > -1
+					? e
+					: utils.getSrcset(utils.t2p(e), {
+						width: t,
+						height: i,
+					})[0]
+				: e || '';
+		};
+
+		/**
+		 * get
+		 * @param {object} props $.ajax의 파라미터
+		 * @param {boolean} credentials true이면 xhrFields.withCredentials = true 설정
+		 * @returns $.ajax
+		 */
+		this.get = function (props, credentials) {
+			var dflOptions = {
+				type: 'GET',
+				contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
+				processData: true,
+				dataType: 'json',
+				data: {},
+			};
+
+			props = props || {};
+			props.url = this.parseUrl(props.url);
+
+			var merged = $.extend({}, dflOptions, props);
+
+			if (credentials === true) {
+				$.extend(merged, {
+					xhrFields: {
+						withCredentials: true,
+					},
+				});
+			}
+
+			return $.ajax(merged);
+		};
+
+		/**
+		 * 사용 x
+		 * @param {object} props $.ajax의 파라미터
+		 * @param {boolean} credentials true이면 xhrFields.withCredentials = true 설정
+		 * @returns $.ajax
+		 */
+		this.getJsonp = function (props, credentials) {
+			var dflOptions = {
+				type: 'GET',
+				contentType: 'text/plain; charset=UTF-8',
+				jsonp: 'callback',
+				dataType: 'jsonp',
+				data: {},
+				cache: false,
+			};
+
+			props = props || {};
+			props.url = this.parseUrl(props.url);
+
+			var merged = $.extend({}, dflOptions, props);
+
+			if (credentials === true) {
+				$.extend(merged, {
+					xhrFields: {
+						withCredentials: true,
+					},
+				});
+			}
+
+			return $.ajax(merged);
+		};
+
+		/**
+		 * object 데이터를 formData로 변경하여 post
+		 * @desc file 있을 경우 contentType: 'multipart/form-data' 설정
+		 * @param {object} props $.ajax의 파라미터 Omit<ajaxOptions, 'complete'> complete는 지원안함
+		 * @param {boolean} credentials true이면 xhrFields.withCredentials = true 설정
+		 * @returns $.ajax
+		 */
+		this.post = function (props, credentials) {
+			var success = props.success;
+			var error = props.error;
+			var dflOptions = {
+				type: 'POST',
+				processData: false,
+				contentType: false,
+				dataType: 'json',
+				complete: function (response) {
+					// api 성공 기준 : status == 200
+					if (
+						response.status === 200 &&
+						// ERROR 객체가 없고
+						!response.responseJSON.ERROR &&
+						// _SUCCESS가 있으면 _SUCCESS.DATA == true (없으면 항상 true)
+						(response.responseJSON._SUCCESS
+							? response.responseJSON._SUCCESS !== false
+							: true)
+					) {
+						if (success) success.call(this, response.responseJSON);
+					} else {
+						if (error) error.call(this, response);
+					}
+				},
+			};
+
+			try {
+				props = props || {};
+				props.url = this.parseUrl(props.url);
+
+				delete props.complete;
+				delete props.success;
+				delete props.error;
+
+				if (
+					props.contentType &&
+					props.contentType.startsWith('application/x-www-form-urlencoded')
+				) {
+				} else {
+					props.data =
+						props.data && props.data.constructor !== FormData
+							? utils.objToFormData(props.data)
+							: undefined;
+				}
+			} catch (e) {}
+
+			var merged = $.extend(dflOptions, props);
+
+			if (credentials === true) {
+				$.extend(merged, {
+					xhrFields: {
+						withCredentials: true,
+					},
+				});
+			}
+
+			return $.ajax(merged);
+		};
+	})();
+
+	/**
+	 * 뒤로가기로 들어온 페이지인지 확인
+	 * @returns true | false
+	 */
+	utils.isBackForwardPage = function () {
+		if (window.performance.navigation) {
+			return (
+				window.performance.navigation.type ==
+				window.performance.navigation.TYPE_BACK_FORWARD
+			);
+		} else if (window.performance.getEntriesByType) {
+			return (
+				window.performance.getEntriesByType('navigation')[0].type ==
+				'back_forward'
+			);
+		} else {
+			return false;
+		}
+	};
+
+	/**
+	 * 즐겨찾기에 추가
+	 * @param {string} url url
+	 * @param {string} title title
+	 */
+	utils.crateBookmarkLink = function (url, title) {
+		if (window.sidebar && window.sidebar.addPanel) {
+			// FF ver 23 이하
+			window.sidebar.addPanel(title, url, '');
+		} else if (window.external && 'AddFavorite' in window.external) {
+			// IE
+			window.external.AddFavorite(url, title);
+		} else {
+			// other browser
+			//    alert('확인을 클릭하신 후 주소창에서 <Ctrl+D>를 누르시면 즐겨찾기에 등록됩니다.');
+			utils.message.alert({
+				message:
+					'확인을 클릭하신 후 주소창에서 Ctrl+D를 누르시면 즐겨찾기에 등록됩니다.',
+			});
+		}
+	};
+
+	/**
+	 * object -> queryString 으로 변환
+	 * @param {object} obj param object
+	 * @returns string
+	 */
+	utils.objectToQs = function (obj) {
+		var arr = Object.keys(obj);
+		if (arr.length < 1) return '';
+
+		var isLast = arr.slice(-1)[0];
+		return (
+			'?' +
+			arr.reduce(function (all, cu) {
+				return (
+					all +
+					cu +
+					'=' +
+					(encodeURIComponent(obj[cu]) || '') +
+					(cu == isLast ? '' : '&')
+				);
+			}, '')
+		);
+	};
+
+	/**
+	 * queryString -> object 로 변환
+	 * @param {string} str qs
+	 * @returns object
+	 */
+	utils.qsToObject = function (str) {
+		return decodeURI(str || location.search)
+			.split(/[\?\&]/g)
+			.filter(function (t) {
+				return t !== '';
+			})
+			.reduce(function (all, cu) {
+				var s = cu.split('=');
+				try {
+					all[s[0]] = decodeURIComponent(s[1] || '');
+				} catch (e) {
+					all[s[0]] = unescape(s[1] || '');
+				}
+				return all;
+			}, {});
+	};
+
+	/**
+	 * 로컬 스토리지
+	 */
+	utils.storage = {
+		getter: function (keyName) {
+			try {
+				var localData = window.localStorage.getItem(constant.storage);
+				var parsed = JSON.parse(localData || '{}');
+				return parsed[keyName];
+			} catch (e) {
+				// local storage error
+				return {};
+			}
+		},
+		setter: function (keyName, keyValue) {
+			try {
+				var localData = window.localStorage.getItem(constant.storage);
+				var parsed = JSON.parse(localData || '{}');
+				parsed[keyName] = keyValue;
+				window.localStorage.setItem(constant.storage, JSON.stringify(parsed));
+				return parsed;
+			} catch (e) {
+				// local storage error
+				return {};
+			}
+		},
+	};
+
+	/**
+	 * SNS 공유
+	 */
+	utils.shareSns = {
+		clipboard: function (artId) {
+			if (artId) {
+				// api
+				utils.req.post(
+					{
+						url:
+							'/my.shareIns' +
+							utils.objectToQs({
+								cid: artId,
+								pcid: utils.pcid.get(),
+								ctype: 'A',
+								platform: utils.device.platform,
+								shareType: 'URLCOPY',
+							}),
+						contentType: 'application/x-www-form-urlencoded',
+						success: function (response) {
+							// if(callbackFunc) {
+							// 	callbackFunc(response);
+							// }
+						},
+					},
+					true
+				);
+			}
+
+			// 링크복사 시 화면 크기 고정
+			$('html')
+				.find('meta[name=viewport]')
+				.attr(
+					'content',
+					'width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no'
+				);
+			var html =
+				'<input id="clip_target" type="text" value="" style="position:absolute;top:-9999em;"/>';
+			$('body').append(html);
+			var input_clip = document.getElementById('clip_target'); //현재 url 가져오기
+			var _url = $(location).attr('href');
+			$('#clip_target').val(_url);
+			if (navigator.userAgent.match(/(iPod|iPhone|iPad)/)) {
+				var editable = input_clip.contentEditable;
+				var readOnly = input_clip.readOnly;
+
+				input_clip.contentEditable = true;
+				input_clip.readOnly = false;
+
+				var range = document.createRange();
+				range.selectNodeContents(input_clip);
+				var selection = window.getSelection();
+
+				selection.removeAllRanges();
+				selection.addRange(range);
+				input_clip.setSelectionRange(0, 999999);
+				input_clip.contentEditable = editable;
+				input_clip.readOnly = readOnly;
+			} else {
+				input_clip.select();
+			}
+			try {
+				var successful = document.execCommand('copy');
+				input_clip.blur();
+				if (successful) {
+					// 링크복사 시 화면 크기 고정
+					utils.message.toast({
+						message: 'URL이 복사 되었습니다.',
+					});
+					$('html')
+						.find('meta[name=viewport]')
+						.attr(
+							'content',
+							'width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=yes'
+						);
+				} else {
+					utils.message.alert({
+						message: '이 브라우저는 지원하지 않습니다.',
+					});
+				}
+			} catch (err) {
+				utils.message.alert({
+					message: '이 브라우저는 지원하지 않습니다.',
+				});
+			}
+		},
+		facebook: function (artId, callbackFunc) {
+			var url = $('meta[property="og:url"]').attr('content').startsWith('//')
+				? encodeURIComponent(
+					'https:' + $('meta[property="og:url"]').attr('content')
+				)
+				: encodeURIComponent($('meta[property="og:url"]').attr('content'));
+			var title = encodeURIComponent(
+				$('meta[property="og:title"]').attr('content')
+			);
+
+			window.open(
+				'http://www.facebook.com/sharer.php?u=' + url + '&t=' + title,
+				'popup제목',
+				'width=900, height=800'
+			);
+
+			if (artId) {
+				// api
+				utils.req.post(
+					{
+						url:
+							'/my.shareIns' +
+							utils.objectToQs({
+								cid: artId,
+								ctype: 'A',
+								pcid: utils.pcid.get(),
+								platform: utils.device.platform,
+								shareType: 'FACEBOOK',
+							}),
+						contentType: 'application/x-www-form-urlencoded',
+						success: function (response) {
+							// if(callbackFunc) {
+							// 	callbackFunc(response);
+							// }
+						},
+					},
+					true
+				);
+			}
+		},
+		twitter: function (artId, callbackFunc) {
+			var url = $('meta[name="twitter:url"]').attr('content').startsWith('//')
+				? encodeURIComponent(
+					'https:' + $('meta[name="twitter:url"]').attr('content')
+				)
+				: encodeURIComponent($('meta[name="twitter:url"]').attr('content'));
+			var title = encodeURIComponent(
+				$('meta[name="twitter:title"]').attr('content')
+			);
+
+			window.open(
+				'https://twitter.com/intent/tweet?url=' + url + '&text=' + title,
+				'popup제목',
+				'width=900, height=800'
+			);
+
+			if (artId) {
+				// api
+				utils.req.post(
+					{
+						url:
+							'/my.shareIns' +
+							utils.objectToQs({
+								cid: artId,
+								ctype: 'A',
+								pcid: utils.pcid.get(),
+								platform: utils.device.platform,
+								shareType: 'TWITTER',
+							}),
+						contentType: 'application/x-www-form-urlencoded',
+						success: function (response) {
+							// if(callbackFunc) {
+							// 	callbackFunc(response);
+							// }
+						},
+					},
+					true
+				);
+			}
+		},
+		band: function (artId, callbackFunc) {
+			var url = $('meta[property="og:url"]').attr('content').startsWith('//')
+				? encodeURIComponent(
+					'https:' + $('meta[property="og:url"]').attr('content')
+				)
+				: encodeURIComponent($('meta[property="og:url"]').attr('content'));
+
+			window.open(
+				'http://www.band.us/plugin/share?body=' + url,
+				'popup제목',
+				'width=900, height=800'
+			);
+
+			if (artId) {
+				// api
+				utils.req.post(
+					{
+						url:
+							'/my.shareIns' +
+							utils.objectToQs({
+								cid: artId,
+								ctype: 'A',
+								pcid: utils.pcid.get(),
+								platform: utils.device.platform,
+								shareType: 'NAVERBAND',
+							}),
+						contentType: 'application/x-www-form-urlencoded',
+						success: function (response) {
+							// if(callbackFunc) {
+							// 	callbackFunc(response);
+							// }
+						},
+					},
+					true
+				);
+			}
+		},
+		blog: function (artId, callbackFunc) {
+			var url = $('meta[property="og:url"]').attr('content').startsWith('//')
+				? encodeURIComponent(
+					'https:' + $('meta[property="og:url"]').attr('content')
+				)
+				: encodeURIComponent($('meta[property="og:url"]').attr('content'));
+			var title = encodeURIComponent(
+				$('meta[property="og:title"]').attr('content')
+			);
+
+			window.open(
+				'http://blog.naver.com/openapi/share?url=' + url + '&title=' + title,
+				'popup제목',
+				'width=900, height=800'
+			);
+
+			if (artId) {
+				// api
+				utils.req.post(
+					{
+						url:
+							'/my.shareIns' +
+							utils.objectToQs({
+								cid: artId,
+								ctype: 'A',
+								pcid: utils.pcid.get(),
+								platform: utils.device.platform,
+								shareType: 'NAVERBLOG',
+							}),
+						contentType: 'application/x-www-form-urlencoded',
+						success: function (response) {
+							// if(callbackFunc) {
+							// 	callbackFunc(response);
+							// }
+						},
+					},
+					true
+				);
+			}
+		},
+		kakaoStory: function (artId, callbackFunc) {
+			// debugger;
+			var url = $('meta[property="og:url"]').attr('content').startsWith('//')
+				? encodeURIComponent(
+					'https:' + $('meta[property="og:url"]').attr('content')
+				)
+				: encodeURIComponent($('meta[property="og:url"]').attr('content'));
+			var title = encodeURIComponent(
+				$('meta[property="og:title"]').attr('content')
+			);
+
+			window.open(
+				'https://story.kakao.com/share?url=' + url + '&text=' + title,
+				'popup제목',
+				'width=900, height=800'
+			);
+
+			// Kakao.Story.share({
+			// 	url: url,
+			// 	text: title,
+			//   });
+
+			if (artId) {
+				// api
+				utils.req.post(
+					{
+						url:
+							'/my.shareIns' +
+							utils.objectToQs({
+								cid: artId,
+								ctype: 'A',
+								pcid: utils.pcid.get(),
+								platform: utils.device.platform,
+								shareType: 'KAKAOSTORY',
+							}),
+						contentType: 'application/x-www-form-urlencoded',
+						success: function (response) {
+							// if(callbackFunc) {
+							// 	callbackFunc(response);
+							// }
+						},
+					},
+					true
+				);
+			}
+		},
+		kakaoTalk: function (artId, callbackFunc) {
+			// debugger;
+			if (window.Kakao && !Kakao.isInitialized()) {
+				Kakao.init('42c9ffb1374d028fbe07a37323f4bca6');
+			}
+
+			var url = $('meta[property="og:url"]').attr('content').startsWith('//')
+				? 'https:' + $('meta[property="og:url"]').attr('content')
+				: $('meta[property="og:url"]').attr('content');
+			var title = encodeURIComponent(
+				$('meta[property="og:title"]').attr('content')
+			);
+
+			Kakao.Share.sendScrap({
+				requestUrl: url,
+			});
+
+			if (artId) {
+				// api
+				utils.req.post(
+					{
+						url:
+							'/my.shareIns' +
+							utils.objectToQs({
+								cid: artId,
+								ctype: 'A',
+								pcid: utils.pcid.get(),
+								platform: utils.device.platform,
+								shareType: 'KAKAOTALK',
+							}),
+						contentType: 'application/x-www-form-urlencoded',
+						success: function (response) {
+							// if(callbackFunc) {
+							// 	callbackFunc(response);
+							// }
+						},
+					},
+					true
+				);
+			}
+		},
+	};
+
+	/**
+	 * 회원 여부 확인
+	 * @returns true | false
+	 */
+	utils.isMem = function () {
+		return utils.cookie.has('MemInfo');
+	};
+
+	/** 회원 정보 불러오기	 */
+	utils.MemInfo = function () {
+		if(!utils.isMem()) return false;
+		if(!utils.cookie.has('MSPMemInfo')) return false;
+
+		var result = utils.req.get({
+			url: '/my.info',
+			dataType: 'json',
+			data: { MSPMemInfo: utils.cookie.get('MSPMemInfo') },
+			async: false
+		}, true);
+
+		var data = result?.responseJSON?._DATA;
+
+		if (!data || data === false) {
+			return false;
+		}
+		return data;
+	};
+
+	/**
+	 * 스크랩 (= 북마크) 기능 모음
+	 */
+	utils.scrap = new (function () {
+		/**
+		 * 북마크된 기사인지 체크
+		 * @param {string} artId 기사ID
+		 * @param {func} callbackFunc 북마크 추가(혹은 실패) 후 실행하는 함수
+		 */
+		this.check = function (artId, callbackFunc) {
+			// artId가 넘버인 경우에만 api호출
+			var regex = /^[0-9]{1,9}$/;
+			var artId = artId;
+			var isNumber = regex.test(artId);
+			if (isNumber == true) {
+				utils.req.get(
+					{
+						url: '/my.scrap.check',
+						data: {
+							artId: artId,
+						},
+						success: function (response) {
+							if (callbackFunc) {
+								if (
+									Array.isArray(response._DATA) &&
+									response._DATA[0] === true
+								) {
+									callbackFunc();
+								}
+							}
+						},
+					},
+					true
+				);
+			}
+		};
+
+		/**
+		 * 북마크 추가하는 함수
+		 * @param {*} artId 기사ID
+		 * @param {*} callbackFunc 콜백함수
+		 */
+		this.insert = function (artId, callbackFunc) {
+			utils.req.post(
+				{
+					url: '/my.scrap.insert',
+					data: {
+						artId: artId,
+					},
+					success: function (response) {
+						if (Array.isArray(response._DATA) && response._DATA[0] !== false) {
+							utils.message.toast({
+								message: '스크랩하였습니다.',
+							});
+						} else {
+							utils.message.alert({
+								message:
+									'북마크를 실패하였습니다.<br/>나중에 다시 시도해주세요.',
+							});
+						}
+						if (callbackFunc) {
+							callbackFunc(response);
+						}
+					},
+					error: function (response) {
+						utils.message.alert({
+							message: '북마크를 실패하였습니다.<br/>나중에 다시 시도해주세요.',
+						});
+					},
+				},
+				true
+			);
+		};
+
+		/**
+		 * 북마크 삭제하는 함수
+		 * @param {array} artIds 기사ID 여러개
+		 * @param {*} callbackFunc 콜백함수
+		 */
+		this.remove = function (artIds, callbackFunc) {
+			var strArtIds = artIds.toString();
+
+			utils.req.get(
+				{
+					url: '/my.scrap.delete',
+					data: {
+						artId: strArtIds,
+					},
+					success: function (response) {
+						if (Array.isArray(response._DATA) && response._DATA[0] !== false) {
+							utils.message.toast({
+								message: '북마크를 삭제하였습니다.',
+							});
+						} else {
+							utils.message.toast({
+								message:
+									'북마크 삭제에 실패하였습니다.<br/>나중에 다시 시도해주세요.',
+							});
+						}
+						if (callbackFunc) {
+							callbackFunc(response);
+						}
+
+						utils.message.dim({ close: true });
+					},
+				},
+				true
+			);
+		};
+	})();
+
+	/**
+	 * 현재 날짜를 yyyy-MM-dd HH:mm:ss 로 파싱하여 리턴
+	 * @returns 파싱된 현재 날짜
+	 */
+	utils.now = function () {
+		var currentDate = new Date();
+		var year = currentDate.getFullYear();
+		var month = ('0' + (currentDate.getMonth() + 1)).slice(-2);
+		var day = ('0' + currentDate.getDate()).slice(-2);
+		var hours = ('0' + currentDate.getHours()).slice(-2);
+		var minutes = ('0' + currentDate.getMinutes()).slice(-2);
+		var seconds = ('0' + currentDate.getSeconds()).slice(-2);
+		var formattedDate =
+			year +
+			'-' +
+			month +
+			'-' +
+			day +
+			' ' +
+			hours +
+			':' +
+			minutes +
+			':' +
+			seconds;
+		return formattedDate;
+	};
+
+	/**
+	 * 파일 다운로드 기능
+	 */
+	utils.download = function (url, fileName) {
+		var xhr = new XMLHttpRequest();
+		xhr.open('GET', url, true);
+		xhr.responseType = 'blob';
+		xhr.onload = function () {
+			var urlCreator = window.URL || window.webkitURL;
+			var imageUrl = urlCreator.createObjectURL(this.response);
+			var tag = document.createElement('a');
+			tag.href = imageUrl;
+			tag.download = fileName;
+			document.body.appendChild(tag);
+			tag.click();
+			document.body.removeChild(tag);
+		};
+		xhr.send();
+	};
+
+	utils.format = {
+		_funcs: null,
+
+		init: function (e) {
+			this._funcs = e;
+		},
+
+		// 각 기능을 함수로 정의합니다.
+		mostviewedInfo: function (e) {
+			const t = this;
+
+			// h.fn.mostviewedInfo 함수 정의
+			h.fn.mostviewedInfo = function (e) {
+				this.each(function (i, o) {
+					if (!h(o).is(t.selector.initialized) || e) {
+						const gap = h(o).data('gap');
+						h(o).text(t.mostviewedInfo(h(o).text(), { gap }));
+						o.setAttribute('data-format-initialized', 'Y');
+					}
+				});
+			};
+		},
+
+		liveArtTime: function (e) {
+			const t = this;
+
+			// h.fn.liveArtTime 함수 정의
+			h.fn.liveArtTime = function (e) {
+				this.each(function (i, o) {
+					if (!h(o).is(t.selector.initialized) || e) {
+						const serviceday = h(this).data('serviceday');
+						let servicetime = h(this).data('servicetime');
+						try {
+							if (serviceday && serviceday !== '') {
+								servicetime =
+									servicetime && servicetime !== '' ? servicetime : '00:00';
+								const s = serviceday.replace(/\./g, '-') + ' ' + servicetime;
+								h(o).text(t.timeAgo(s));
+							} else {
+								h(o).text(servicetime);
+							}
+						} catch (e) {
+							h(o).text(servicetime);
+						}
+						if (h(o).text().split(/[. :]/).length === 5) {
+							h(this).parent().addClass('off');
+						}
+						o.setAttribute('data-format-initialized', 'Y');
+					}
+				});
+			};
+		},
+
+		liveTime: function (e) {
+			const t = this;
+
+			// h.fn.liveTime 함수 정의
+			h.fn.liveTime = function (e) {
+				this.each(function (i, o) {
+					if (h(o).is(t.selector.initialized) && !e) {
+						return;
+					}
+					if (h(o).attr('data-livestatus') === '0') {
+						h(o).text(t.liveTime(h(o).text()));
+					} else {
+						h(o).text('라이브가 종료되었습니다.');
+					}
+					o.setAttribute('data-format-initialized', 'Y');
+				});
+			};
+		},
+
+		issuePick: function (e) {
+			const t = this;
+
+			// h.fn.issuePick 함수 정의
+			h.fn.issuePick = function (e) {
+				this.each(function (i, o) {
+					if (h(o).is(t.selector.initialized) && !e) {
+						return;
+					}
+					h(o).text(t.issuePick());
+					o.setAttribute('data-format-initialized', 'Y');
+				});
+			};
+		},
+
+		timeAgo: function (e) {
+			const t = this;
+
+			// h.fn.timeAgo 함수 정의
+			h.fn.timeAgo = function (e) {
+				this.each(function (i, o) {
+					if (h(o).is(t.selector.initialized) && !e) {
+						return;
+					}
+					h(o).text(t.timeAgo(h(o).text()));
+					o.setAttribute('data-format-initialized', 'Y');
+				});
+			};
+		},
+
+		dateBetween: function (e, t) {
+			try {
+				const i =
+						e instanceof Date ? e : typeof e === 'string' ? new Date(e) : null,
+					o =
+						t instanceof Date
+							? t
+							: typeof t === 'string'
+								? new Date(t)
+								: this._funcs.serverDaytime;
+				return i ? o - i : null;
+			} catch (e) {
+				console.error(e);
+				return null;
+			}
+		},
+	};
+
+	utils.type = {
+		480: function () {
+			(String.prototype.cut = function (e) {
+				for (var t = '', i = 0; i++ < e; ) t += this;
+				return t;
+			}),
+				(Number.prototype.zf = String.prototype.zf =
+					function (e) {
+						var t = this.toString();
+						return '0'.cut(e - t.length) + this;
+					}),
+				(String.prototype.toDate = function () {
+					var e = new Date(
+						this.replace('T', ' ').replace(/\./g, '/').replace(/-/g, '/')
+					);
+					return 'Invalid Date' == e ? utils.serverDaytime || new Date() : e;
+				}),
+				(String.prototype.toDateISO8061 = function () {
+					if (!this.valueOf()) return ' ';
+					var e = this.replace('T', ' ').split(/[- :]/);
+					return new Date(
+						e[0],
+						e[1] - 1,
+						e[2],
+						e[3] || 0,
+						e[4] || 0,
+						e[5] || 0
+					);
+				}),
+				(Date.prototype.format = function (e) {
+					this.valueOf() || (this.valueOf = this.__proto__valueOf);
+					var t = [
+							'일요일',
+							'월요일',
+							'화요일',
+							'수요일',
+							'목요일',
+							'금요일',
+							'토요일',
+						],
+						i = ['일', '월', '화', '수', '목', '금', '토'],
+						o = this;
+					return e.replace(
+						/(yyyy|yy|MM|M|dd|d|E|e|HH|hh|mm|ss|a\/p)/gi,
+						function (e) {
+							switch (e) {
+								case 'yyyy':
+									return o.getFullYear();
+								case 'yy':
+									return (o.getFullYear() % 1e3).zf(2);
+								case 'MM':
+									return (o.getMonth() + 1).zf(2);
+								case 'M':
+									return (o.getMonth() + 1).zf(1);
+								case 'dd':
+									return o.getDate().zf(2);
+								case 'd':
+									return o.getDate().zf(1);
+								case 'E':
+									return t[o.getDay()];
+								case 'e':
+									return i[o.getDay()];
+								case 'HH':
+									return o.getHours().zf(2);
+								case 'hh':
+									return ((h = o.getHours() % 12) ? h : 12).zf(2);
+								case 'mm':
+									return o.getMinutes().zf(2);
+								case 'm':
+									return o.getMinutes().zf(1);
+								case 'ss':
+									return o.getSeconds().zf(2);
+								case 'a/p':
+									return o.getHours() < 12 ? '오전' : '오후';
+								default:
+									return e;
+							}
+						}
+					);
+				}),
+				(Array.prototype.indexOfObject = function (e, t) {
+					for (var i = 0, o = this.length; i < o; i++)
+						if (this[i][e] == t) return i;
+					return -1;
+				}),
+			Function.prototype.bind ||
+			(Function.prototype.bind = function (e) {
+				if ('function' != typeof this)
+					throw new TypeError(
+						'Function.prototype.bind - what is trying to be bound is not callable'
+					);
+				var t = Array.prototype.slice.call(arguments, 1),
+					i = this,
+					o = function () {},
+					s = function () {
+						return i.apply(
+							this instanceof o ? this : e,
+							t.concat(Array.prototype.slice.call(arguments))
+						);
+					};
+				return (
+					this.prototype && (o.prototype = this.prototype),
+						(s.prototype = new o()),
+						s
+				);
+			}),
+			window.NodeList &&
+			(NodeList.prototype.forEach ||
+			(NodeList.prototype.forEach = Array.prototype.forEach),
+			NodeList.prototype.some ||
+			(NodeList.prototype.some = Array.prototype.some),
+			NodeList.prototype.every ||
+			(NodeList.prototype.every = Array.prototype.every)),
+			String.prototype.unescapeHtml ||
+			(String.prototype.unescapeHtml = function () {
+				return this.replace(/&amp;/g, '&')
+					.replace(/&lt;/g, '<')
+					.replace(/&gt;/g, '>')
+					.replace(/&quot;/g, '"')
+					.replace(/&apos;/g, "'");
+			}),
+			String.prototype.endsWith ||
+			(String.prototype.endsWith = function (e, t) {
+				var i = e.length - (t ? t.length : 0);
+				return i > 0 ? e.lastIndexOf(t) === i : 0 === i && e === t;
+			}),
+			'function' != typeof Object.assign &&
+			Object.defineProperty(Object, 'assign', {
+				value: function (e, t) {
+					'use strict';
+					if (null == e)
+						throw new TypeError(
+							'Cannot convert undefined or null to object'
+						);
+					for (var i = Object(e), o = 1; o < arguments.length; o++) {
+						var s = arguments[o];
+						if (null != s)
+							for (var n in s)
+								Object.prototype.hasOwnProperty.call(s, n) && (i[n] = s[n]);
+					}
+					return i;
+				},
+				writable: !0,
+				configurable: !0,
+			}),
+				(String.prototype.batchim = function () {
+					var e = this[this.length - 1].charCodeAt(0);
+					return !(e < 44032 || e > 55203) && (e - 44032) % 28 != 0;
+				}),
+				(String.prototype.tmpl = function (e) {
+					return $('<div>' + this + '</div>').tmpl(e);
+				});
+		},
+	};
+
+	utils.format.init({
+		serverDaytime: (i = window.__Ndaytime)
+			? (i.pr.ymday + ' ' + i.pr.hsTime).toDate()
+			: new Date(),
+	});
+
+	utils.type[480]();
+
+	window.utils = utils;
+
+	// pcid 생성
+	window.utils.pcid.set();
+})();

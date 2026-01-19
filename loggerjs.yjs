@@ -1,0 +1,67 @@
+function uniqtime(){
+	var expire = new Date();
+	var ymdhis = expire.getFullYear()+"";
+	ymdhis += ( ((expire.getMonth()+1)<10) ? "0"+(expire.getMonth()+1):(expire.getMonth()+1))  + "";
+	ymdhis += ( (expire.getDate()<10) ? "0"+expire.getDate():expire.getDate())+"";
+	ymdhis += ( (expire.getHours()<10) ? "0"+expire.getHours():expire.getHours())+"";
+	ymdhis += ( (expire.getMinutes()<10) ? "0"+expire.getMinutes():expire.getMinutes())+"";
+	ymdhis += ( (expire.getSeconds()<10) ? "0"+expire.getSeconds():expire.getSeconds())+"";
+	ymdhis += ( (expire.getMilliseconds()<10) ? "00"+expire.getMilliseconds():((expire.getMilliseconds()<100) ? "0"+expire.getMilliseconds():expire.getMilliseconds())) + "";
+	ymdhis += parseInt(Math.floor(Math.random() * (9999 - 1000))) + parseInt(1000);
+	return ymdhis.substr(2,20);
+}
+
+var _YNXGOODS_ID_ = (typeof(_YNXGOODS_ID_)=="undefined")  ? "":encodeURIComponent(_YNXGOODS_ID_ );
+var _YNXGOODS_TYPE_ = (typeof(_YNXGOODS_TYPE_)=="undefined")  ? "":encodeURIComponent(_YNXGOODS_TYPE_);
+var _YNXGOODS_TITLE_ = (typeof(_YNXGOODS_TITLE_)=="undefined")  ? "Unknown Title":encodeURIComponent(_YNXGOODS_TITLE_);
+if(_YNXGOODS_ID_ == ""){ _YNXGOODS_ID_ = location.pathname;}
+if(_YNXGOODS_TITLE_ == ""){ _YNXGOODS_TITLE_ = "Unknown Title";}
+var IP_ = "222.110.40.155";
+var CookieValue = "";var cValue = "";
+var cName =  "_ynx"+_YNXGOODS_TYPE_ ;
+var cookieData = document.cookie;
+var start = cookieData.indexOf(cName);
+var cDay = 3;
+var expire = new Date();
+var ymdhis = uniqtime();
+
+if(start != -1){	
+	start += cName.length;	
+	var end = cookieData.indexOf(";", start);
+	if(end == -1){ end = cookieData.length;	}
+	cValue = cookieData.substring((start+1), end);
+	if(cValue.substring(0,1)=="="){
+		cookies = cName + "=" + escape(ymdhis) + "; path=/ "; if(typeof cDay != "undefined") cookies += ";expires=" + expire.toGMTString() + ";";
+		document.cookie = cookies;
+		cValue = ymdhis
+	}
+}else{
+	cookies = cName + "=" + escape(ymdhis) + "; path=/ "; if(typeof cDay != "undefined") cookies += ";expires=" + expire.toGMTString() + ";";
+	document.cookie = cookies;
+	cValue = ymdhis
+}
+CookieValue = unescape(cValue);
+var resolution = screen.width+"x"+screen.height;
+var url = "//hlogger.heraldcorp.com/logger/logger.hrd?";
+url+="&gid="+ _YNXGOODS_ID_;url+="&gtype="+ _YNXGOODS_TYPE_;
+url+="&title="+ _YNXGOODS_TITLE_ ;
+url+="&referer_url="+encodeURIComponent(document.referrer);
+url+="&user_agent="+encodeURIComponent(navigator.userAgent);
+url+="&user_ip="+encodeURIComponent(IP_);
+url+="&cookie_value="+encodeURIComponent(CookieValue);
+url+="&resolution="+encodeURIComponent(resolution);
+url+="&hostname="+location.hostname;
+url+="&protocol="+location.protocol;
+if(_YNXGOODS_ID_ !="" && _YNXGOODS_TYPE_ != "" )
+{
+
+	var img_src = "<img src="+url+" border=0 height=0 width=0>";
+	var ImgLogger = document.createElement("img");
+	if(typeof(ImgLogger))	{ImgLogger.src = url;}else{document.write(img_src);}
+	/*
+	const HttpLogger = new XMLHttpRequest();
+	HttpLogger.open('GET', url);
+	HttpLogger.send();
+	*/
+}
+

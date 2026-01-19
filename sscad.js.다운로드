@@ -1,0 +1,257 @@
+(function ($) {
+	/**
+	 * (배너) 광고 랜덤 슬라이드
+	 */
+	$.fn.AdvRandomRoll = function () {
+		return this.each(function () {
+			var thisAdv = $(this);
+			var thisLi = $('ul li', thisAdv);
+			// var thisLi = $('#adUl li', thisAdv);
+			var cnt = thisLi.length;
+			var rdm = Math.floor(Math.random() * cnt);
+			thisLi.hide();
+			function onInit(rNum) {
+				var adProd = thisLi.eq(rNum).data('period');
+				if (adProd == 0) {
+					thisLi.eq(rNum).show();
+					return;
+				}
+				// var adProd = thisLi.eq(rNum).attr("period");
+				if (typeof adProd === 'undefined' || adProd == '') {
+					adProd = 1;
+				}
+				var cTime = adProd * 1000;
+				if (thisLi.eq(rNum).children().css('display') == 'none') {
+					cTime = 1;
+				}
+				thisLi.eq(rNum).show();
+				setTimeout(function () {
+					thisLi.eq(rNum).hide();
+					nextAdvShow(rNum);
+				}, cTime);
+			}
+			function nextAdvShow(rNum) {
+				var newRdm = randomNum(rNum);
+				onInit(newRdm);
+			}
+			function randomNum(cRdm) {
+				var rdmNum = Math.floor(Math.random() * cnt);
+				/* 광고개수 모니터링 */
+				//if( cnt <= 1 ){ console.log(cnt+"/"+rdmNum); }
+				return rdmNum;
+			}
+			setTimeout(function () {
+				thisLi = $('ul li', thisAdv);
+				cnt = thisLi.length;
+				rdm = Math.floor(Math.random() * cnt);
+				onInit(rdm);
+			}, 250);
+		});
+	};
+
+	/**
+	 * (배너) 광고 순서대로 슬라이드
+	 */
+	$.fn.AdvRoll = function () {
+		return this.each(function () {
+			var thisAdv = $(this);
+			var thisLi = $('ul li', thisAdv);
+			// var thisLi = $('#adUl li', thisAdv);
+			var cnt = thisLi.length;
+			var rdm = 0;
+			thisLi.hide();
+			function onInit(rNum) {
+				var adProd = thisLi.eq(rNum).data('period');
+				if (adProd == 0) {
+					thisLi.hide();
+					thisLi.eq(0).show();
+					return;
+				}
+				// var adProd = thisLi.eq(rNum).attr("period");
+				if (typeof adProd === 'undefined' || adProd == '') {
+					adProd = 1;
+				}
+				var cTime = adProd * 1000;
+				if (thisLi.eq(rNum).children().css('display') == 'none') {
+					cTime = 1;
+				}
+				thisLi.eq(rNum).show();
+				setTimeout(function () {
+					thisLi.eq(rNum).hide();
+					nextAdvShow(rNum + 1);
+				}, cTime);
+			}
+			function nextAdvShow(rNum) {
+				// var newRdm = randomNum( rNum );
+				if (rNum == cnt) {
+					onInit(0);
+				} else {
+					onInit(rNum);
+				}
+			}
+			// function randomNum( cRdm ){
+			// 	var rdmNum = Math.floor(Math.random() * cnt);
+			// 	/* 광고개수 모니터링 */
+			// 	//if( cnt <= 1 ){ console.log(cnt+"/"+rdmNum); }
+			// 	return rdmNum;
+			// }
+			setTimeout(function () {
+				thisLi = $('ul li', thisAdv);
+				cnt = thisLi.length;
+				// rdm = Math.floor(Math.random() * cnt);
+				onInit(rdm);
+			}, 250);
+		});
+	};
+
+	/**
+	 * (배너) 날짜별로 광고 노출
+	 */
+	$.fn.AdvDateControll = function (options) {
+		options = $.extend(
+			{
+				sDate: '2015-09-10',
+				eDate: '2015-09-25',
+			},
+			options
+		);
+		return this.each(function () {
+			var thisAd = $(this);
+			var startDate = options.sDate;
+			var endDate = options.eDate;
+			/* today date */
+			var fullDate = new Date();
+			var twoDigitMonth =
+				fullDate.getMonth().toString().length == 1
+					? '0' + (fullDate.getMonth() + 1)
+					: fullDate.getMonth() + 1;
+			var twoDigitDate =
+				fullDate.getDate().toString().length == 1
+					? '0' + fullDate.getDate()
+					: fullDate.getDate();
+			var currentYear = parseInt(fullDate.getFullYear());
+			var currentMon = parseInt(twoDigitMonth);
+			var currentDay = parseInt(twoDigitDate);
+			/* Ad start date */
+			var sYear = parseInt(startDate.substr(0, 4));
+			var sMon = parseInt(startDate.substr(5, 4));
+			var sDay = parseInt(startDate.substr(8, 4));
+			/* Ad end date */
+			var eYear = parseInt(endDate.substr(0, 4));
+			var eMon = parseInt(endDate.substr(5, 4));
+			var eDay = parseInt(endDate.substr(8, 4));
+			var startDateFull = new Date();
+			startDateFull.setFullYear(sYear, sMon, sDay);
+			var endDateFull = new Date();
+			endDateFull.setFullYear(eYear, eMon, eDay);
+			var setDateFull = new Date();
+			setDateFull.setFullYear(currentYear, currentMon, currentDay);
+			//if( startDateFull > setDateFull || setDateFull > endDateFull ){
+
+			var ad_sDate = new Date(options.sDate); // 광고 시작일
+			var ad_eDate = new Date(options.eDate); // 광고 종료일
+			var now_time = new Date(); //현재 시각
+
+			// 광고기간 확인 후 css 설정 수정해야 함
+			/*
+			if((now_time > ad_sDate) && (now_time < ad_eDate)){
+				//광고 노출 기간
+			}else{
+				//광고 비노출 기간
+			}
+			*/
+
+			if (setDateFull > endDateFull) {
+				thisAd.css('display', 'none');
+				if (thisAd.parent('li')) {
+					thisAd.parent('li').remove();
+				}
+				if (thisAd.parent('a').parent('li')) {
+					thisAd.parent('a').parent('li').remove();
+				}
+			}
+			//console.log( startDateFull.getTime()  );
+			//console.log( endDateFull.getTime()  );
+			//console.log( setDateFull.getTime()  );
+		});
+	};
+
+	/**
+	 * 스크롤에 따라 top을 변경
+	 * @param {string} id 고유 key
+	 */
+	$.fn.AdMoveTop = function (id) {
+		id = id || new Date().getTime();
+		window.adMoveTop = window.adMoveTop || {};
+		adMoveTop[id] = { time: null, top: 10 };
+		var $this = $(this);
+		$(window).scroll(function () {
+			if (adMoveTop[id].time !== null) {
+				window.clearTimeout(adMoveTop[id].time);
+				adMoveTop[id].time = null;
+			}
+			adMoveTop[id].time = window.setTimeout(function () {
+				var t = $(window).scrollTop();
+				if (t < adMoveTop[id].top) t = adMoveTop[id].top;
+				if (t > 3400) t = 3400;
+				$this.stop().animate({ top: t + 'px' }, 300);
+			}, 10);
+		});
+	};
+
+	/**
+	 * 기타 설정 수정 네비버튼 '있음'일 경우 slick slide
+	 */
+		$.fn.AdvSlide = function (isAutoPlay, isRandom) {
+			var period = $('.horizon-hbanner ul li').first().data('period') * 1000;
+			period = period ? parseInt(period) : 3000;
+
+			return this.each(function () {
+				var $slider = $(this).find('ul');
+
+				$slider.slick({
+					dots: true,
+					arrows: false,
+					autoplay: isAutoPlay,
+					infinite: true,
+					autoplaySpeed: period,
+					responsive: [
+						{
+							breakpoint: 769,
+							settings: {}
+						},
+						{
+							breakpoint: 9999,
+							settings: {}
+						},
+					],
+				});
+
+				if (isRandom === true) {
+					// 슬라이드의 총 개수
+					const totalSlides = $slider.slick("getSlick").slideCount;
+
+					// 무작위 슬라이드 인덱스 선택
+					function getRandomSlideIndex(excludedIndex) {
+						let randomSlide;
+						do {
+								randomSlide = Math.floor(Math.random() * totalSlides);
+						} while (randomSlide === excludedIndex);
+						return randomSlide;
+					}
+
+					function goToRandomSlide() {
+						const currentSlideIndex = $slider.slick('slickCurrentSlide');
+
+						const randomSlide = getRandomSlideIndex(currentSlideIndex);
+
+						$slider.slick('slickGoTo', randomSlide);
+					}
+
+					setInterval(goToRandomSlide, period);
+
+				}
+
+			});
+		}
+})(window.jQuery);
